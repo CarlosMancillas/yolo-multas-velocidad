@@ -1,0 +1,34 @@
+#!/bin/bash -l
+#SBATCH --account=curso04
+#SBATCH --nodes=1                 # Número de nodos
+#SBATCH --job-name=yolo_multas    # Nombre del trabajo
+#SBATCH --ntasks=1                # Número de procesos
+#SBATCH --cpus-per-task=16         # Hilos para cargar imágenes
+#SBATCH --time=6:00:00            # Tiempo máximo (máx. 168 hrs)
+#SBATCH --partition=gpu           # Partición GPU (AMD Instinct MI210, ROCm 7.2)
+#SBATCH --gres=gpu:1              # 1 GPU
+#SBATCH --output=yolo_multas-%j.out
+
+echo "Redes neuronales - Tarea 7: YOLO detector de vehículos y placas"
+echo "Nodo: $(hostname)   Inicio: $(date)"
+
+module load conda
+source activate yolo_multas
+
+export MIOPEN_FIND_MODE=FAST
+rocm-smi
+$HOME/.conda/envs/yolo_multas/bin/python -c "import torch; print('torch', torch.__version__, '| GPU:', torch.cuda.get_device_name(0))"
+
+$HOME/.conda/envs/yolo_multas/bin/python entrenar_yolo.py \
+    --data dataset/data.yaml \
+    --modelo yolov8n.pt \
+    --epocas 50 \
+    --imgsz 416 \
+    --batch 32 \
+    --device 0 \
+    --salida salida
+
+# Exportar el ambiente (evidencia de reproducibilidad)
+conda env export -n yolo_multas > yolo_multas.yml
+
+echo "Fin: $(date)"
